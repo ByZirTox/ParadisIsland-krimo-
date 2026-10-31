@@ -984,7 +984,18 @@ function openPeople() {
     title: '👥 Habitants & bonheur', html,
     buttons: [
       { label: 'Fermer', cls: 'ghost' },
-      { label: 'Nouvelle partie', cls: 'ghost', onclick: () => { if (confirm('Effacer la partie en cours et recommencer ?')) resetGame(); } },
+      { label: 'Nouvelle partie', cls: 'ghost', onclick: openResetConfirm },
+    ],
+  });
+}
+
+function openResetConfirm() {
+  openModal({
+    title: 'Recommencer à zéro ?',
+    html: '<p>Ta partie en cours (île, habitants, règles) sera effacée.</p>',
+    buttons: [
+      { label: 'Oui, nouvelle partie', cls: 'primary', onclick: resetGame },
+      { label: 'Annuler', cls: 'ghost' },
     ],
   });
 }
