@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#0d4f6e">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<title>Île Paradis</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="app">
+  <header id="hud" aria-label="Ressources"></header>
+
+  <main id="stage">
+    <canvas id="c" aria-label="Carte de l'île"></canvas>
+    <div id="toasts" aria-live="polite"></div>
+    <button id="adBtn" type="button" hidden></button>
+  </main>
+
+  <div id="hint"></div>
+
+  <nav id="bar">
+    <button class="tab" id="bBuild" type="button"><span>🔨</span>Construire</button>
+    <button class="tab" id="bRules" type="button"><span>🏛️</span>Règles</button>
+    <button class="tab" id="bPeople" type="button"><span>👥</span>Habitants</button>
+    <button class="tab" id="bStable" type="button"><span>🐎</span>Écurie</button>
+  </nav>
+</div>
+
+<div id="modal" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="mTitle">
+    <h2 id="mTitle"></h2>
+    <div id="mBody"></div>
+    <div id="mFoot"></div>
+  </div>
+</div>
+
+<script src="game.js"></script>
+</body>
+</html>
