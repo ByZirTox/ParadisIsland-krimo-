@@ -186,7 +186,7 @@ const I18N = {
     names: ['Ram', 'Sita', 'Mohan', 'Geeta', 'Ravi', 'Lakshmi', 'Amit', 'Pooja', 'Suresh', 'Aarti', 'Kishan', 'Radha', 'Ajay', 'Sunita', 'Deepak', 'Meena'],
   },
 };
-let LANG = 'hi';
+let LANG = 'fr';
 function t(key, ...args) {
   let s = (I18N[LANG] && I18N[LANG][key]);
   if (s == null) s = I18N.en[key];
@@ -835,7 +835,7 @@ function openSettings() {
     html: `<p><b>${t('set_lang')}</b></p>${langs}<p><b>${t('set_skin')}</b></p>${skins}<p class="muted">${t('skin_note')}</p>`,
     buttons: [{ label: t('reset'), cls: 'ghost', onclick: openResetConfirm }, { label: t('close'), cls: 'primary' }],
     onrender: body => {
-      body.querySelectorAll('[data-lang]').forEach(el => el.addEventListener('click', () => { LANG = el.dataset.lang; state.lang = LANG; save(); applyLang(); openSettings(); }));
+      body.querySelectorAll('[data-lang]').forEach(el => el.addEventListener('click', () => { LANG = el.dataset.lang; state.lang = LANG; state.langChosen = true; save(); applyLang(); openSettings(); }));
       body.querySelectorAll('[data-skin]').forEach(el => el.addEventListener('click', () => { state.skin = el.dataset.skin; save(); openSettings(); }));
     },
   });
@@ -1119,7 +1119,7 @@ function frame(now) {
 function init() {
   MAP = genMap();
   const saved = load();
-  LANG = saved && saved.lang ? saved.lang : ((navigator.language || '').toLowerCase().startsWith('fr') ? 'fr' : 'hi');
+  LANG = saved && saved.langChosen && saved.lang ? saved.lang : 'fr';   // français par défaut, sauf choix explicite du joueur
   state = saved || newState();
   rebuildGrids(); assignWorkers();
   applyLang(); resize();
