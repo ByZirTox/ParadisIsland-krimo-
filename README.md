@@ -121,7 +121,8 @@ Aucun paiement n'est branché ; les achats UPI (₹10-49) restent à concevoir.
 Simulation (bot, 1,4 toucher/s) : champ à 15 s, chaï à 80 s, bazar à 136 s, 1er temple à 196 s, 10 habitants à ~5 min,
 tout construit vers 6 min, puis les améliorations prennent le relais (≈2 h pour s'approcher du niveau 9 partout).
 Un joueur presque passif (0,25 toucher/s) a 1,5 à 2× de retard sur les jalons : la partie reste jouable sans taper.
-À régler avec de vrais joueurs : le bois/pierre devient le facteur limitant en fin de partie, les pièces s'accumulent.
+Les pièces servent aussi à acheter bois (10 pour 25 🪙) et pierre (8 pour 25 🪙) : touche 🪵 ou 🪨 en haut de l'écran. Avec cet échange, le bot atteint les niveaux 9-10 en ≈2 h.
+À régler avec de vrais joueurs : prix de l'échange et durée de vie du jeu après le niveau 10.
 
 Style et confort (v2) : bâtiments, villageois, vaches et paon dessinés au canvas (maisons colorées, champs, échoppes à chaï,
 bazar, temple), guirlande de fanions, la fête devient un **Diwali** (diyas, feux d'artifice), le Kotwal monte un éléphant par défaut.

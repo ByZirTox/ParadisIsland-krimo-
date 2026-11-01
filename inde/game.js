@@ -78,6 +78,7 @@ const I18N = {
     h_idle: 'चोर 🦹 दिखे तो जल्दी छुओ! त्योहार 🎆 से कमाई दोगुनी।',
     h_thief: '🦹 चोर! जल्दी छुओ!',
     h_wood: 'लकड़ी कम है — पेड़ 🌳 छुओ।',
+    h_buy: 'ऊपर 🪵 या 🪨 छुओ और सिक्कों से खरीदो।', ex_title: '🪙 सिक्के बदलें', ex_desc: 'सिक्कों से लकड़ी या पत्थर खरीदो।',
     snd: 'ध्वनि और कंपन', snd_on: 'चालू', snd_off: 'बंद',
     names: ['राम', 'सीता', 'मोहन', 'गीता', 'रवि', 'लक्ष्मी', 'अमित', 'पूजा', 'सुरेश', 'आरती', 'किशन', 'राधा', 'अजय', 'सुनीता', 'दीपक', 'मीना'],
   },
@@ -133,6 +134,7 @@ const I18N = {
     h_idle: 'Touche vite les voleurs 🦹 ! Une fête 🎆 double tes revenus.',
     h_thief: '🦹 Un voleur ! Touche-le vite !',
     h_wood: 'Il manque du bois : touche les arbres 🌳.',
+    h_buy: 'Touche 🪵 ou 🪨 en haut pour en acheter avec tes pièces.', ex_title: '🪙 Échanger des pièces', ex_desc: 'Achète du bois ou de la pierre avec tes pièces.',
     snd: 'Son et vibrations', snd_on: 'Activés', snd_off: 'Coupés',
     names: ['Ram', 'Sita', 'Mohan', 'Geeta', 'Ravi', 'Lakshmi', 'Amit', 'Pooja', 'Suresh', 'Aarti', 'Kishan', 'Radha', 'Ajay', 'Sunita', 'Deepak', 'Meena'],
   },
@@ -188,6 +190,7 @@ const I18N = {
     h_idle: 'Tap thieves 🦹 fast! A festival 🎆 doubles your income.',
     h_thief: '🦹 Thief! Tap it fast!',
     h_wood: 'Low on wood: tap the trees 🌳.',
+    h_buy: 'Tap 🪵 or 🪨 above to buy more with coins.', ex_title: '🪙 Trade coins', ex_desc: 'Buy wood or stone with your coins.',
     snd: 'Sound & vibration', snd_on: 'On', snd_off: 'Off',
     names: ['Ram', 'Sita', 'Mohan', 'Geeta', 'Ravi', 'Lakshmi', 'Amit', 'Pooja', 'Suresh', 'Aarti', 'Kishan', 'Radha', 'Ajay', 'Sunita', 'Deepak', 'Meena'],
   },
@@ -346,6 +349,26 @@ function upgrade(b) {
   toast(t('up_done', bName(b.type), b.lvl));
   save();
   return true;
+}
+
+// les pièces servent aussi à acheter bois et pierre (puits à pièces en fin de partie)
+const EXCHANGE = { wood: { n: 10, c: 25 }, stone: { n: 8, c: 25 } };
+function exchange(res, times = 1) {
+  const e = EXCHANGE[res];
+  if (!e || state.res.coins < e.c * times) { toast(t('need_more')); return false; }
+  state.res.coins -= e.c * times; state.res[res] += e.n * times;
+  Sfx.play('coin');
+  return true;
+}
+function openExchange() {
+  const rows = Object.keys(EXCHANGE).map(r => [1, 5].map(m => {
+    const e = EXCHANGE[r], c = e.c * m, ok = state.res.coins >= c;
+    return `<button type="button" class="row" data-ex="${r}" data-m="${m}" ${ok ? '' : 'disabled'}><span class="ico">${RES[r].e}</span><span class="grow"><span class="name">+${e.n * m} ${t(r)}</span><span class="desc ${ok ? '' : 'lack'}">${c}🪙</span></span></button>`;
+  }).join('')).join('');
+  openModal({
+    title: t('ex_title'), html: `<p class="muted">${t('ex_desc')}</p>${rows}`, buttons: [{ label: t('close'), cls: 'ghost' }],
+    onrender: body => body.querySelectorAll('[data-ex]').forEach(el => el.addEventListener('click', () => { exchange(el.dataset.ex, +el.dataset.m); openExchange(); })),
+  });
 }
 
 // chaque habitant occupe un poste dans un bâtiment de travail (par ordre de construction)
@@ -727,10 +750,11 @@ function initHud() {
     const c = document.createElement('div');
     c.className = 'chip'; c.title = t(k);
     c.innerHTML = `${RES[k].e}<b>0</b>`;
-    hud.appendChild(c); hudEls[k] = c.lastChild;
+    if (EXCHANGE[k]) { c.classList.add('buy'); c.insertAdjacentHTML('beforeend', '<i>＋</i>'); c.addEventListener('click', () => { if (!modalOpen) openExchange(); }); }
+    hud.appendChild(c); hudEls[k] = c.querySelector('b');
   }
   const pop = document.createElement('div'); pop.className = 'chip'; pop.title = t('people'); pop.innerHTML = '👥<b>0/0</b>';
-  hud.appendChild(pop); hudEls.pop = pop.lastChild;
+  hud.appendChild(pop); hudEls.pop = pop.querySelector('b');
 }
 function renderHud() {
   const s = state;
@@ -772,7 +796,7 @@ function currentHint() {
   if (s.people.length >= capacity() && s.people.length >= 2 && countOf('house') < 3) return t('h_house');
   if (!has('bazaar')) return t('h_bazaar');
   if (!has('temple')) return t('h_temple');
-  if (s.res.wood < 20) return t('h_wood');
+  if (s.res.wood < 20) return s.res.coins >= 50 ? t('h_buy') : t('h_wood');
   return t('h_idle');
 }
 let lastHintKey = '';
@@ -1308,7 +1332,7 @@ init();
 // Accès pour les tests / le débogage : window.__gb
 window.__gb = {
   get state() { return state; }, get lang() { return LANG; },
-  update, harvest, upgrade, Sfx, initCows, upCost, placeBuilding, startPlacing, finishBuilding, costOf, rates, spawnThief, catchThief,
+  update, harvest, upgrade, Sfx, initCows, exchange, openExchange, upCost, placeBuilding, startPlacing, finishBuilding, costOf, rates, spawnThief, catchThief,
   claimDaily, dailyInfo, openDaily, openFestival, startFestival, openSettings, openBuildMenu, closeModal, save,
   offlineGains, openOffline, resetGame, t, Ads,
   get modalOpen() { return modalOpen; },
