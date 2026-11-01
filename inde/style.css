@@ -18,7 +18,7 @@ html, body {
   height: 100%;
   background: var(--sea);
   color: #fff;
-  font-family: "Noto Sans Devanagari", "Mukta", "Hind", ui-rounded, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-family: "Noto Sans Devanagari", "Noto Sans Tamil", "Noto Sans Bengali", "Mukta", "Hind", ui-rounded, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   line-height: 1.45;
   overscroll-behavior: none;
   -webkit-user-select: none;
@@ -328,3 +328,5 @@ button.row:active:not(:disabled) { transform: scale(.985); }
 .chip.buy { cursor: pointer; }
 .chip.buy i { font-style: normal; font-size: 11px; font-weight: 800; color: #3a2600; background: #f6c22e; border-radius: 999px; padding: 0 5px; line-height: 1.5; }
 .row .desc.lack { color: #c0392b; }
+
+.langs .btn { font-size: 14px; padding: 10px 6px; }

@@ -101,7 +101,7 @@ pour avancer le temps. Les emojis dépendent de la police du système (Apple, Go
 ## Version Inde : `inde/` (गाँव बाज़ार / Village Bazaar)
 
 Version volontairement **plus simple et plus légère**, pensée pour les téléphones d'entrée de gamme
-et des sessions courtes : `inde/index.html` (français par défaut, hindi et anglais dans ⚙️ Réglages).
+et des sessions courtes : `inde/index.html` (français par défaut, hindi, anglais, tamoul, bengali et marathi dans ⚙️ Réglages ; traductions ta/bn/mr à faire relire par des locuteurs natifs).
 
 | Île Paradis | Village Bazaar |
 |---|---|
