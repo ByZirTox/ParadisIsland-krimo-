@@ -77,6 +77,8 @@ const I18N = {
     h_temple: 'मंदिर 🛕 बनाओ: पूरे गाँव की कमाई बढ़ती है।',
     h_idle: 'चोर 🦹 दिखे तो जल्दी छुओ! त्योहार 🎆 से कमाई दोगुनी।',
     h_thief: '🦹 चोर! जल्दी छुओ!',
+    h_wood: 'लकड़ी कम है — पेड़ 🌳 छुओ।',
+    snd: 'ध्वनि और कंपन', snd_on: 'चालू', snd_off: 'बंद',
     names: ['राम', 'सीता', 'मोहन', 'गीता', 'रवि', 'लक्ष्मी', 'अमित', 'पूजा', 'सुरेश', 'आरती', 'किशन', 'राधा', 'अजय', 'सुनीता', 'दीपक', 'मीना'],
   },
   fr: {
@@ -130,6 +132,8 @@ const I18N = {
     h_temple: 'Construis un temple 🛕 : tout le village gagne plus.',
     h_idle: 'Touche vite les voleurs 🦹 ! Une fête 🎆 double tes revenus.',
     h_thief: '🦹 Un voleur ! Touche-le vite !',
+    h_wood: 'Il manque du bois : touche les arbres 🌳.',
+    snd: 'Son et vibrations', snd_on: 'Activés', snd_off: 'Coupés',
     names: ['Ram', 'Sita', 'Mohan', 'Geeta', 'Ravi', 'Lakshmi', 'Amit', 'Pooja', 'Suresh', 'Aarti', 'Kishan', 'Radha', 'Ajay', 'Sunita', 'Deepak', 'Meena'],
   },
   en: {
@@ -183,6 +187,8 @@ const I18N = {
     h_temple: 'Build a temple 🛕: the whole village earns more.',
     h_idle: 'Tap thieves 🦹 fast! A festival 🎆 doubles your income.',
     h_thief: '🦹 Thief! Tap it fast!',
+    h_wood: 'Low on wood: tap the trees 🌳.',
+    snd: 'Sound & vibration', snd_on: 'On', snd_off: 'Off',
     names: ['Ram', 'Sita', 'Mohan', 'Geeta', 'Ravi', 'Lakshmi', 'Amit', 'Pooja', 'Suresh', 'Aarti', 'Kishan', 'Radha', 'Ajay', 'Sunita', 'Deepak', 'Meena'],
   },
 };
@@ -207,7 +213,7 @@ const SAVE_KEY = 'gaon-bazaar-v1';
 const OFFLINE_CAP = 2 * 3600;   // on ne compte que 2 h d'absence
 const OFFLINE_RATE = .5;        // rendement hors-ligne (50 %)
 const FEST_LEN = 30, FEST_CD = 150;
-const COST_GROWTH = 1.3;        // +30 % par exemplaire déjà posé
+const COST_GROWTH = 1.22;       // +22 % par exemplaire déjà posé
 const MAX_LVL = 10;             // niveaux d'amélioration (champ, chaï, bazar)
 
 const RES = {
@@ -277,6 +283,7 @@ let state;
 const nodeGrid = new Map(), bGrid = new Map();
 let placing = null, hover = null, lastHarvest = null;
 const fx = [];
+const cows = [];
 
 function newState() {
   const nodes = MAP.nodeDefs.map((d, i) => ({ id: i, kind: d.kind, x: d.x, y: d.y, v: d.v, stock: NODE[d.kind].max, regrow: 0, cool: 0 }));
@@ -290,7 +297,7 @@ function newState() {
     festCd: 60, festUntil: -1,
     thief: null, thiefT: 40, combo: 0, caught: 0,
     daily: { last: '', streak: 0 },
-    skin: 'horse',
+    skin: 'elephant',
     kotwal: { x: CENTER.x + .5, y: CENTER.y + 2.5, tx: CENTER.x + .5, ty: CENTER.y + 2.5, wait: 2, dash: false },
   };
 }
@@ -334,7 +341,7 @@ function upgrade(b) {
   const c = upCost(b);
   if (!canAfford(c)) { toast(t('need_more')); return false; }
   for (const [k, v] of Object.entries(c)) state.res[k] -= v;
-  b.lvl = lvlOf(b) + 1;
+  b.lvl = lvlOf(b) + 1; Sfx.play('build');
   floatText(b.x + .5, b.y, '⬆️', '#ffd56a');
   toast(t('up_done', bName(b.type), b.lvl));
   save();
@@ -343,10 +350,10 @@ function upgrade(b) {
 
 // chaque habitant occupe un poste dans un bâtiment de travail (par ordre de construction)
 function assignWorkers() {
-  let left = state.people.length;
+  let i = 0;
   for (const b of state.buildings) {
-    b.worked = false;
-    if (b.built && BUILDINGS[b.type].work && left > 0) { b.worked = true; left--; }
+    b.worked = false; b.workerId = null;
+    if (b.built && BUILDINGS[b.type].work && i < state.people.length) { b.worked = true; b.workerId = state.people[i].id; i++; }
   }
 }
 
@@ -370,14 +377,15 @@ function rates() {
 /* ==========================================================================
    ACTIONS DU JOUEUR
    ========================================================================== */
-function give(k, n, tx, ty, color) {
+function give(k, n, tx, ty, color, auto = false) {
   state.res[k] += n;
-  if (tx != null) floatText(tx + .5, ty + .15, `+${n}${RES[k].e}`, color);
+  if (tx != null) floatText(tx + .5, ty + .15, `+${n}${RES[k].e}`, color, auto);
 }
 function harvest(n) {
   if (n.stock <= 0 || n.cool > state.t) return;
-  const def = NODE[n.kind], amt = rint(1, 2);
+  const def = NODE[n.kind], amt = n.kind === 'tree' ? rint(1, 3) : rint(1, 2);
   n.stock--; n.cool = state.t + .25;
+  Sfx.play('tap'); buzz(8);
   if (n.stock <= 0) n.regrow = state.t + def.regrow;
   give(def.res, amt, n.x, n.y);
   lastHarvest = { res: def.res, amt, t: state.t, x: n.x, y: n.y };
@@ -409,7 +417,7 @@ function placeBuilding(type, x, y) {
 }
 function finishBuilding(b) {
   b.built = true; b.left = 0;
-  assignWorkers();
+  assignWorkers(); Sfx.play('build'); buzz(30);
   floatText(b.x + .5, b.y, '✨');
   toast(t('site_done', BUILDINGS[b.type].e, bName(b.type)));
   save();
@@ -419,14 +427,14 @@ function addVillager() {
   const used = new Set(s.people.map(p => p.name));
   const free = I18N.hi.names.map((_, i) => i).filter(i => !used.has(i));
   const idx = free.length ? pick(free) : rint(0, I18N.hi.names.length - 1);
-  s.people.push({ id: s.nextId++, name: idx });
+  s.people.push({ id: s.nextId++, name: idx }); Sfx.play('coin');
   assignWorkers();
   toast(t('arrive', I18N[LANG].names[idx]));
 }
 
 /* ---------- festival ---------- */
 function startFestival(len = FEST_LEN) {
-  state.festUntil = state.t + len;
+  state.festUntil = state.t + len; Sfx.play('fest');
   state.festCd = FEST_CD;
   floatText(CENTER.x + .5, CENTER.y - .2, '🎆🎶');
   toast(t('fest_start', len));
@@ -472,6 +480,7 @@ function claimDaily(mult = 1) {
   const info = dailyInfo();
   if (!info.can) return false;
   state.daily = { last: todayStr(), streak: info.streak };
+  Sfx.play('gift'); buzz(40);
   const r = DAILY[info.idx];
   applyReward(r, mult);
   toast(t('daily_got', rewardText(Object.fromEntries(Object.entries(r).map(([k, v]) => [k, RES[k] ? v * mult : v])))));
@@ -534,6 +543,7 @@ function spawnThief() {
   const list = state.buildings.filter(b => b.built);
   const b = pick(list);
   state.thief = { x: b.x, y: b.y, ttl: 9, move: 2.4 };
+  Sfx.play('alert');
   toast(t('thief_toast'));
 }
 function catchThief() {
@@ -542,7 +552,7 @@ function catchThief() {
   s.combo = Math.min(s.combo + 1, 9);
   const built = s.buildings.filter(b => b.built).length;
   const reward = Math.min(80, Math.round((8 + 3 * built) * (1 + .25 * Math.min(s.combo - 1, 4))));
-  s.res.coins += reward; s.caught++;
+  s.res.coins += reward; s.caught++; Sfx.play('catch'); buzz([15, 30, 15]);
   floatText(th.x + .5, th.y, `+${reward}🪙`, '#ffd56a');
   s.kotwal.tx = th.x + .5; s.kotwal.ty = th.y + .9; s.kotwal.dash = true; s.kotwal.wait = 1.2;
   toast(s.combo > 1 ? t('caught_combo', reward, s.combo) : t('caught', reward));
@@ -551,10 +561,26 @@ function catchThief() {
 function thiefEscaped() {
   const s = state, th = s.thief;
   const loss = Math.min(Math.floor(s.res.coins), clamp(Math.floor(s.res.coins * .1), 3, 30));
-  s.res.coins -= loss; s.combo = 0;
+  s.res.coins -= loss; s.combo = 0; Sfx.play('fail');
   if (loss > 0) floatText(th.x + .5, th.y, `−${loss}🪙`, '#ff8a80');
   toast(loss > 0 ? t('escaped', loss) : t('escaped0'));
   s.thief = null; s.thiefT = rnd(35, 60);
+}
+function initCows() {
+  cows.length = 0;
+  for (let i = 0; i < 2; i++) { const p = randomLandTile(null, 0); cows.push({ x: p.x + .5, y: p.y + .5, tx: p.x + .5, ty: p.y + .5, wait: rnd(1, 4) }); }
+}
+function updateCows(dt) {
+  for (const c of cows) {
+    const dx = c.tx - c.x, dy = c.ty - c.y, d = Math.hypot(dx, dy);
+    if (d > .05) { const st = Math.min(d, .45 * dt); c.x += dx / d * st; c.y += dy / d * st; continue; }
+    c.wait -= dt;
+    if (c.wait <= 0) {
+      const p = randomLandTile({ x: Math.floor(c.x), y: Math.floor(c.y) }, 2);
+      if (!buildingAt(p.x, p.y) && !nodeAt(p.x, p.y)) { c.tx = p.x + .5; c.ty = p.y + .5; }
+      c.wait = rnd(2, 5);
+    }
+  }
 }
 function updateKotwal(dt) {
   const k = state.kotwal;
@@ -590,9 +616,9 @@ function update(dt) {
     b.acc += dt * m * (b.worked ? 2 : 1) * lvlMult(b) / def.interval;
     while (b.acc >= 1) {
       b.acc -= 1;
-      if (b.type === 'farm') give('grain', 1, b.x, b.y);
-      else if (b.type === 'chai') give('coins', 2, b.x, b.y);
-      else if (b.type === 'bazaar' && s.res.grain >= 1) { s.res.grain -= 1; give('coins', 3, b.x, b.y); }
+      if (b.type === 'farm') give('grain', 1, b.x, b.y, undefined, true);
+      else if (b.type === 'chai') give('coins', 2, b.x, b.y, undefined, true);
+      else if (b.type === 'bazaar' && s.res.grain >= 1) { s.res.grain -= 1; give('coins', 3, b.x, b.y, undefined, true); }
     }
   }
   // les habitants ramassent du bois et de la pierre
@@ -600,7 +626,7 @@ function update(dt) {
   while (s.gatherAcc >= 1) {
     s.gatherAcc -= 1;
     const h = s.buildings.find(b => b.built && b.type === 'house');
-    if (h) give(Math.random() < .6 ? 'wood' : 'stone', 1, h.x, h.y);
+    if (h) give(Math.random() < .6 ? 'wood' : 'stone', 1, h.x, h.y, undefined, true);
   }
 
   // nouveaux habitants (automatique)
@@ -623,6 +649,7 @@ function update(dt) {
     if (s.thiefT <= 0) spawnThief();
   }
   updateKotwal(dt);
+  updateCows(dt);
 
   saveTimer += dt;
   if (saveTimer > 5) { saveTimer = 0; save(); }
@@ -724,14 +751,15 @@ let barKey = '';
 function renderBar() {
   const s = state, info = dailyInfo();
   const fest = festLive() ? `live|${Math.ceil(s.festUntil - s.t)}` : s.festCd <= 0 ? 'ready' : `wait|${Math.ceil(s.festCd / 5) * 5}`;
-  const key = `${LANG}|${info.can}|${fest}`;
+  const nudge = !s.buildings.some(b => b.type === 'farm');
+  const key = `${LANG}|${info.can}|${fest}|${nudge}`;
   if (key === barKey) return;
   barKey = key;
-  $('#bBuild').innerHTML = `<span>🔨</span>${t('tab_build')}`;
+  $('#bBuild').innerHTML = `<span>🔨</span>${t('tab_build')}`; $('#bBuild').classList.toggle('nudge', nudge);
   const g = $('#bGift'); g.innerHTML = `<span>🎁</span>${t('tab_gift')}`; g.classList.toggle('gift', info.can);
   const f = $('#bFest');
   f.classList.toggle('ready', !festLive() && s.festCd <= 0); f.classList.toggle('live', festLive());
-  const sub = festLive() ? `${t('fest_live')} · ${Math.ceil(s.festUntil - s.t)}s` : s.festCd <= 0 ? t('fest_ready') : fmtDur(s.festCd);
+  const sub = festLive() ? `🔥 ${Math.ceil(s.festUntil - s.t)} s` : s.festCd <= 0 ? t('fest_ready') : fmtDur(s.festCd);
   f.innerHTML = `<span>🎆</span>${t('tab_fest')}<small>${sub}</small>`;
   $('#bSet').innerHTML = `<span>⚙️</span>${t('tab_set')}`;
 }
@@ -739,10 +767,12 @@ function currentHint() {
   const s = state, has = ty => s.buildings.some(b => b.type === ty);
   if (s.thief) return t('h_thief');
   if (!has('farm')) return t('h_start');
+  if (!has('bazaar') && s.res.grain >= 15) return t('h_bazaar');
   if (!has('chai')) return t('h_chai');
   if (s.people.length >= capacity() && s.people.length >= 2 && countOf('house') < 3) return t('h_house');
   if (!has('bazaar')) return t('h_bazaar');
   if (!has('temple')) return t('h_temple');
+  if (s.res.wood < 20) return t('h_wood');
   return t('h_idle');
 }
 let lastHintKey = '';
@@ -809,7 +839,7 @@ function openBuildingModal(b) {
       ? `<p><b>${t('house_people')}</b></p>` + occ.map(p => `<div class="row"><span class="ico">🧑</span><span class="grow"><span class="name">${personName(p)}</span></span></div>`).join('')
       : `<p class="muted">${t('house_empty')}</p>`;
   } else if (def.work) {
-    const w = state.people[state.buildings.filter(x => x.built && BUILDINGS[x.type].work).indexOf(b)];
+    const w = state.people.find(p => p.id === b.workerId);
     body += b.worked && w ? `<p>${t('work_yes', personName(w))}</p>` : `<p class="muted">${t('work_no')}</p>`;
   } else if (b.type === 'temple') body += `<p>${t('temple_info', Math.round((templeBonus() - 1) * 100))}</p>`;
   const buttons = [];
@@ -830,12 +860,14 @@ function openSettings() {
   const skins = SKINS.map(k => `<button type="button" class="row ${state.skin === k.id ? 'sel' : ''}" data-skin="${k.id}">
       <span class="ico">${k.e}</span><span class="grow"><span class="name">${t(k.n)}</span>
       <span class="desc">${state.skin === k.id ? t('skin_on') : t('skin_pick')}</span></span></button>`).join('');
+  const snd = `<button type="button" class="row" data-snd="1"><span class="ico">${state.sound === false ? '🔇' : '🔊'}</span><span class="grow"><span class="name">${t('snd')}</span><span class="desc">${state.sound === false ? t('snd_off') : t('snd_on')}</span></span></button>`;
   openModal({
     title: t('set_title'),
-    html: `<p><b>${t('set_lang')}</b></p>${langs}<p><b>${t('set_skin')}</b></p>${skins}<p class="muted">${t('skin_note')}</p>`,
+    html: `<p><b>${t('set_lang')}</b></p>${langs}${snd}<p><b>${t('set_skin')}</b></p>${skins}<p class="muted">${t('skin_note')}</p>`,
     buttons: [{ label: t('reset'), cls: 'ghost', onclick: openResetConfirm }, { label: t('close'), cls: 'primary' }],
     onrender: body => {
       body.querySelectorAll('[data-lang]').forEach(el => el.addEventListener('click', () => { LANG = el.dataset.lang; state.lang = LANG; state.langChosen = true; save(); applyLang(); openSettings(); }));
+      body.querySelectorAll('[data-snd]').forEach(el => el.addEventListener('click', () => { state.sound = state.sound === false; save(); if (state.sound) Sfx.play('coin'); openSettings(); }));
       body.querySelectorAll('[data-skin]').forEach(el => el.addEventListener('click', () => { state.skin = el.dataset.skin; save(); openSettings(); }));
     },
   });
@@ -852,6 +884,35 @@ function openResetConfirm() {
    Remplace `Ads.show` par le SDK de ton choix (AdMob, etc.) : appelle
    `onReward()` seulement si la pub a été regardée en entier.
    ========================================================================== */
+const Sfx = {
+  ctx: null,
+  init() {
+    if (!this.ctx) { try { const C = window.AudioContext || window.webkitAudioContext; if (C) this.ctx = new C(); } catch (e) { /* pas d'audio */ } }
+    if (this.ctx && this.ctx.state === 'suspended') this.ctx.resume().catch(() => {});
+  },
+  tone(f, d, type = 'sine', vol = .1, delay = 0, to = 0) {
+    const c = this.ctx;
+    if (!c || !state || state.sound === false) return;
+    const t0 = c.currentTime + delay, o = c.createOscillator(), g = c.createGain();
+    o.type = type; o.frequency.setValueAtTime(f, t0);
+    if (to) o.frequency.exponentialRampToValueAtTime(to, t0 + d);
+    g.gain.setValueAtTime(vol, t0); g.gain.exponentialRampToValueAtTime(.0001, t0 + d);
+    o.connect(g); g.connect(c.destination); o.start(t0); o.stop(t0 + d + .02);
+  },
+  seq(notes, d, type, vol, gap) { notes.forEach((f, i) => this.tone(f, d, type, vol, i * gap)); },
+  play(n) {
+    if (n === 'tap') this.tone(560, .06, 'triangle', .09, 0, 820);
+    else if (n === 'coin') this.seq([880, 1320], .09, 'square', .05, .07);
+    else if (n === 'build') this.seq([523, 659, 784], .12, 'triangle', .1, .09);
+    else if (n === 'catch') this.seq([660, 880, 1100, 1320], .09, 'square', .06, .07);
+    else if (n === 'fail') this.tone(300, .25, 'sawtooth', .06, 0, 150);
+    else if (n === 'alert') this.seq([740, 740], .1, 'square', .06, .14);
+    else if (n === 'gift') this.seq([523, 659, 784, 1047], .13, 'triangle', .1, .1);
+    else if (n === 'fest') this.seq([392, 523, 659, 784, 1047], .14, 'triangle', .1, .09);
+  },
+};
+function buzz(p) { try { if (state && state.sound !== false && navigator.vibrate) navigator.vibrate(p); } catch (e) { /* ignoré */ } }
+
 const Ads = {
   show(reason, onReward) {
     const total = 3; let left = total;
@@ -926,12 +987,22 @@ function paintTerrain() {
   for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) {
     if (!isLand(x, y)) continue;
     const edge = !isLand(x + 1, y) || !isLand(x - 1, y) || !isLand(x, y + 1) || !isLand(x, y - 1), h = hash2(x, y);
-    c.fillStyle = edge ? '#f3dfa2' : h < .33 ? '#9ccf6e' : h < .66 ? '#93c867' : '#a4d577';
+    c.fillStyle = edge ? '#efd18f' : h < .33 ? '#a5c966' : h < .66 ? '#9cc25e' : '#aed06f';
     landPath(c, x, y, 0); c.fill();
     if (!edge && hash2(y, x) < .14) {
-      c.fillStyle = hash2(x + 3, y) < .5 ? '#ffd24a' : '#ff8fb0';
-      c.beginPath(); c.arc(ox + (x + .3) * ts, oy + (y + .65) * ts, ts * .05, 0, 7); c.fill();
+      c.fillStyle = hash2(x + 3, y) < .6 ? '#ffb01c' : '#ff6b9a';   // soucis (marigold) et fleurs roses
+      c.beginPath(); c.arc(ox + (x + .3) * ts, oy + (y + .65) * ts, ts * .06, 0, 7); c.fill();
     }
+  }
+  // guirlande de fanions (toran) au-dessus de l'île
+  const gx0 = ox + ts * .2, gx1 = ox + ts * COLS - ts * .2, gy = oy + ts * .1, FL = ['#f08a1c', '#e8668f', '#f6c22e', '#2fa89f', '#d6336c'];
+  c.strokeStyle = 'rgba(255,255,255,.75)'; c.lineWidth = Math.max(1, ts * .03); c.beginPath();
+  for (let i = 0; i <= 40; i++) { const tt = i / 40, x = gx0 + (gx1 - gx0) * tt, y = gy + Math.sin(Math.PI * tt) * ts * .22; i ? c.lineTo(x, y) : c.moveTo(x, y); }
+  c.stroke();
+  const nFl = Math.max(8, Math.round((gx1 - gx0) / (ts * .5)));
+  for (let i = 0; i < nFl; i++) {
+    const tt = (i + .5) / nFl, x = gx0 + (gx1 - gx0) * tt, y = gy + Math.sin(Math.PI * tt) * ts * .22;
+    c.fillStyle = FL[i % FL.length]; c.beginPath(); c.moveTo(x - ts * .12, y); c.lineTo(x + ts * .12, y); c.lineTo(x, y + ts * .28); c.closePath(); c.fill();
   }
   sparkles = [];
   for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++)
@@ -946,7 +1017,12 @@ function emoji(ch, cx, cy, size, alpha = 1) {
   ctx.globalAlpha = 1;
 }
 const px = x => ox + x * ts, py = y => oy + y * ts;
-function floatText(x, y, text, color = '#fff') { fx.push({ x, y, text, color, age: 0, life: 1.2 }); if (fx.length > 24) fx.shift(); }
+function floatText(x, y, text, color = '#fff', auto = false) {
+  // la production automatique reste discrète : 3 textes à la fois, petits et brefs
+  if (auto && fx.filter(f => f.auto).length >= 3) return;
+  fx.push({ x, y, text, color, age: 0, life: auto ? .8 : 1.2, auto });
+  if (fx.length > 16) fx.shift();
+}
 
 function render(dt) {
   clock += dt;
@@ -977,26 +1053,44 @@ function render(dt) {
   for (const n of s.nodes) items.push({ y: n.y + .5, f: () => drawNode(n) });
   for (const b of s.buildings) items.push({ y: b.y + .6, f: () => drawBuilding(b) });
   items.push({ y: s.kotwal.y, f: drawKotwal });
+  for (const c of cows) items.push({ y: c.y, f: () => emoji('🐄', px(c.x), py(c.y) - ts * .08, ts * .5) });
+  for (const b of s.buildings) if (b.built && b.type === 'temple') items.push({ y: b.y + 1.05, f: () => emoji('🦚', px(b.x) + ts * .1, py(b.y) + ts * .98, ts * .34) });
   if (s.thief) items.push({ y: s.thief.y + 2, f: drawThief });
   items.sort((a, b) => a.y - b.y);
   for (const it of items) it.f();
 
-  if (festLive()) {   // petites étincelles de fête
-    for (let i = 0; i < 10; i++) {
-      const k = (clock * .7 + i * .37) % 1, x = ox + ((i * 53 + 17) % 97) / 97 * ts * COLS, y = oy + (1 - k) * ts * ROWS * .8;
-      emoji(['✨', '🎆', '🪔'][i % 3], x, y, ts * .5, 1 - k);
-    }
-  }
+  if (festLive()) drawDiwali(dt);
   for (let i = fx.length - 1; i >= 0; i--) {
     const f = fx[i]; f.age += dt;
     if (f.age > f.life) { fx.splice(i, 1); continue; }
     const k = f.age / f.life;
-    ctx.globalAlpha = 1 - k * k;
-    ctx.font = `800 ${Math.max(12, ts * .46)}px ${EMOJI_FONT}`;
+    ctx.globalAlpha = (1 - k * k) * (f.auto ? .85 : 1);
+    ctx.font = `800 ${Math.max(11, ts * (f.auto ? .34 : .46))}px system-ui, "Noto Sans Devanagari", ${EMOJI_FONT}`;
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(0,0,0,.55)';
     const X = px(f.x), Y = py(f.y) - k * ts * .9;
     ctx.strokeText(f.text, X, Y); ctx.fillStyle = f.color; ctx.fillText(f.text, X, Y);
+    ctx.globalAlpha = 1;
+  }
+}
+const fireworks = []; let fwT = 0;
+function drawDiwali(dt) {
+  const g = ctx.createRadialGradient(W / 2, H / 2, ts, W / 2, H / 2, Math.max(W, H) * .7);
+  g.addColorStop(0, 'rgba(255,170,60,.16)'); g.addColorStop(1, 'rgba(120,20,60,.22)');
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+  for (const [x, y] of [[2, 0], [5, 0], [8, 0], [2, ROWS - 1], [5, ROWS - 1], [8, ROWS - 1], [0, 3], [0, 6], [0, 9], [COLS - 1, 3], [COLS - 1, 6], [COLS - 1, 9]])
+    emoji('🪔', px(x) + ts / 2, py(y) + ts / 2, ts * .5, .75 + .25 * Math.sin(clock * 6 + x * 3 + y));
+  fwT -= dt;
+  if (fwT <= 0 && fireworks.length < 5) {
+    fwT = rnd(.35, .7);
+    const parts = []; for (let k = 0; k < 16; k++) parts.push({ a: k / 16 * 6.283, v: rnd(.7, 1.2) });
+    fireworks.push({ cx: ox + rnd(.1, .9) * ts * COLS, cy: oy + rnd(.08, .55) * ts * ROWS, col: pick(['#ffd24a', '#ff6b9a', '#7fe0ff', '#ff9a3c', '#b58cff']), parts, age: 0 });
+  }
+  for (let i = fireworks.length - 1; i >= 0; i--) {
+    const f = fireworks[i]; f.age += dt;
+    if (f.age > 1) { fireworks.splice(i, 1); continue; }
+    ctx.fillStyle = f.col; ctx.globalAlpha = 1 - f.age;
+    for (const q of f.parts) { ctx.beginPath(); ctx.arc(f.cx + Math.cos(q.a) * q.v * f.age * ts * 2.2, f.cy + Math.sin(q.a) * q.v * f.age * ts * 2.2 + f.age * f.age * ts * .8, ts * .055, 0, 7); ctx.fill(); }
     ctx.globalAlpha = 1;
   }
 }
@@ -1010,27 +1104,104 @@ function drawNode(n) {
     for (let k = 0; k < n.stock; k++) { ctx.beginPath(); ctx.arc(X - (n.stock - 1) * ts * .07 + k * ts * .14, Y + ts * .42, ts * .04, 0, 7); ctx.fill(); }
   } else emoji(n.kind === 'tree' ? '🌱' : '🪨', X, Y, ts * .45, .5);
 }
-function drawBuilding(b) {
-  const def = BUILDINGS[b.type], X = px(b.x), Y = py(b.y);
-  ctx.fillStyle = 'rgba(0,0,0,.18)'; rr(ctx, X + ts * .08, Y + ts * .16, ts * .86, ts * .82, ts * .2); ctx.fill();
-  ctx.fillStyle = b.built ? def.plate : '#cdbb9d'; rr(ctx, X + ts * .05, Y + ts * .1, ts * .9, ts * .82, ts * .2); ctx.fill();
-  ctx.strokeStyle = 'rgba(0,0,0,.22)'; ctx.lineWidth = 1.5; ctx.stroke();
-  if (b.built) {
-    emoji(def.e, X + ts / 2, Y + ts * .42, ts * .78);
-    if (b.type === 'house') {
-      const occ = state.people.slice(builtOf('house').indexOf(b) * 2, builtOf('house').indexOf(b) * 2 + 2);
-      occ.forEach((p, i) => emoji('🧑', X + ts * (.3 + i * .4), Y + ts * .9, ts * .3));
-    } else if (def.work && b.worked) emoji('👷', X + ts * .82, Y + ts * .88, ts * .38);
-    if (def.work && lvlOf(b) > 1) {
-      ctx.fillStyle = '#f08a1c'; ctx.beginPath(); ctx.arc(X + ts * .2, Y + ts * .22, ts * .17, 0, 7); ctx.fill();
-      ctx.fillStyle = '#fff'; ctx.font = `800 ${Math.round(ts * .24)}px sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.fillText(lvlOf(b), X + ts * .2, Y + ts * .23);
+const HOUSE_COLORS = ['#e8668f', '#35b3ad', '#f3c443', '#ee8a3a', '#7a6ad8'];
+const SKIN_TONES = ['#c68642', '#a86b3c', '#e0ac69', '#8d5524'];
+const CLOTHES = ['#e8668f', '#f3c443', '#35b3ad', '#ee8a3a', '#7a6ad8', '#d94f4f'];
+
+function drawPerson(cx, cy, size, seed) {
+  const sk = SKIN_TONES[seed % 4], cl = CLOTHES[(seed * 3 + 1) % 6];
+  ctx.fillStyle = 'rgba(0,0,0,.18)'; ctx.beginPath(); ctx.ellipse(cx, cy + size * .12, size * .26, size * .08, 0, 0, 7); ctx.fill();
+  ctx.fillStyle = cl; rr(ctx, cx - size * .22, cy - size * .38, size * .44, size * .52, size * .16); ctx.fill();
+  ctx.fillStyle = sk; ctx.beginPath(); ctx.arc(cx, cy - size * .52, size * .2, 0, 7); ctx.fill();
+  ctx.fillStyle = seed % 2 ? '#f08a1c' : '#2b2118';          // turban ou cheveux
+  ctx.beginPath(); ctx.arc(cx, cy - size * .57, size * .21, Math.PI, 0); ctx.fill();
+}
+
+function scallops(x, y, w, h, n, colors) {
+  const sw = w / n;
+  for (let i = 0; i < n; i++) {
+    ctx.fillStyle = colors[i % colors.length];
+    ctx.beginPath(); ctx.moveTo(x + i * sw, y); ctx.lineTo(x + (i + 1) * sw, y); ctx.lineTo(x + (i + 1) * sw, y + h);
+    ctx.arc(x + (i + .5) * sw, y + h, sw / 2, 0, Math.PI); ctx.closePath(); ctx.fill();
+  }
+}
+
+function drawArt(type, X, Y, b) {
+  const u = ts, c = ctx;
+  if (type === 'house') {
+    c.fillStyle = HOUSE_COLORS[(b.x * 7 + b.y * 3) % 5]; rr(c, X + u * .16, Y + u * .42, u * .68, u * .46, u * .05); c.fill();
+    c.fillStyle = '#b4503a'; c.beginPath(); c.moveTo(X + u * .08, Y + u * .46); c.lineTo(X + u * .5, Y + u * .14); c.lineTo(X + u * .92, Y + u * .46); c.closePath(); c.fill();
+    c.fillStyle = '#8c3a28'; c.fillRect(X + u * .1, Y + u * .44, u * .8, u * .04);
+    c.fillStyle = '#5a3420'; rr(c, X + u * .43, Y + u * .62, u * .14, u * .26, [u * .07, u * .07, 0, 0]); c.fill();
+    c.fillStyle = '#fff3c4'; c.fillRect(X + u * .24, Y + u * .54, u * .12, u * .12); c.fillRect(X + u * .64, Y + u * .54, u * .12, u * .12);
+  } else if (type === 'farm') {
+    c.fillStyle = '#8a5a34'; rr(c, X + u * .1, Y + u * .28, u * .8, u * .6, u * .08); c.fill();
+    for (let i = 0; i < 4; i++) {
+      const y = Y + u * (.36 + i * .13);
+      c.fillStyle = i % 2 ? '#7cc04a' : '#6ab13e'; rr(c, X + u * .16, y, u * .5, u * .08, u * .04); c.fill();
+      c.fillStyle = '#f0c23a'; for (let k = 0; k < 4; k++) { c.beginPath(); c.arc(X + u * (.22 + k * .12), y + u * .02, u * .028, 0, 7); c.fill(); }
     }
-  } else {
-    emoji('🚧', X + ts / 2, Y + ts * .4, ts * .7);
+    c.fillStyle = '#e6b94a'; c.beginPath(); c.moveTo(X + u * .66, Y + u * .8); c.lineTo(X + u * .78, Y + u * .38); c.lineTo(X + u * .9, Y + u * .8); c.closePath(); c.fill();
+    c.strokeStyle = '#b98a1e'; c.lineWidth = 1.2; c.beginPath(); c.moveTo(X + u * .72, Y + u * .62); c.lineTo(X + u * .84, Y + u * .62); c.stroke();
+  } else if (type === 'chai') {
+    c.fillStyle = '#8a5a34'; rr(c, X + u * .14, Y + u * .55, u * .72, u * .33, u * .05); c.fill();
+    scallops(X + u * .12, Y + u * .22, u * .76, u * .22, 6, ['#f2a21c', '#9c2a3a']);
+    c.fillStyle = '#4a3a30'; c.beginPath(); c.arc(X + u * .3, Y + u * .52, u * .1, 0, 7); c.fill();
+    c.fillRect(X + u * .36, Y + u * .46, u * .1, u * .03);
+    c.fillStyle = '#fff'; rr(c, X + u * .58, Y + u * .43, u * .14, u * .17, u * .03); c.fill();
+    c.fillStyle = '#b86a2e'; c.fillRect(X + u * .6, Y + u * .5, u * .1, u * .08);
+    c.strokeStyle = 'rgba(255,255,255,.85)'; c.lineWidth = Math.max(1.2, u * .03);
+    for (let k = 0; k < 2; k++) {
+      const sx = X + u * (.62 + k * .06), ph = clock * 3 + k * 2;
+      c.beginPath(); c.moveTo(sx, Y + u * .42); c.quadraticCurveTo(sx + Math.sin(ph) * u * .05, Y + u * .35, sx, Y + u * .28); c.stroke();
+    }
+  } else if (type === 'bazaar') {
+    c.fillStyle = '#7a4a2a'; rr(c, X + u * .1, Y + u * .6, u * .8, u * .28, u * .05); c.fill();
+    const sp = ['#d63a2f', '#f2b01c', '#e8681a', '#6aa84f', '#c9356b'];
+    for (let i = 0; i < 5; i++) {
+      const x = X + u * (.2 + i * .15), y = Y + u * .64;
+      c.fillStyle = sp[i]; c.beginPath(); c.moveTo(x - u * .07, y); c.lineTo(x, y - u * .13); c.lineTo(x + u * .07, y); c.closePath(); c.fill();
+    }
+    c.fillStyle = '#5a3420'; c.fillRect(X + u * .12, Y + u * .3, u * .03, u * .32); c.fillRect(X + u * .85, Y + u * .3, u * .03, u * .32);
+    scallops(X + u * .08, Y + u * .14, u * .84, u * .2, 7, ['#d6336c', '#f6c22e', '#1fa6a0']);
+  } else if (type === 'temple') {
+    c.fillStyle = '#efe2c8'; rr(c, X + u * .1, Y + u * .8, u * .8, u * .1, u * .03); c.fill(); rr(c, X + u * .17, Y + u * .71, u * .66, u * .1, u * .03); c.fill();
+    c.fillStyle = '#f6ead0'; c.fillRect(X + u * .26, Y + u * .5, u * .48, u * .22);
+    c.fillStyle = '#8a2a1f'; rr(c, X + u * .43, Y + u * .57, u * .14, u * .15, [u * .07, u * .07, 0, 0]); c.fill();
+    for (let i = 0; i < 4; i++) {
+      const w = u * (.5 - i * .1);
+      c.fillStyle = i % 2 ? '#f08a1c' : '#e0641a'; rr(c, X + u * .5 - w / 2, Y + u * (.4 - i * .09), w, u * .11, u * .03); c.fill();
+    }
+    c.fillStyle = '#f6c22e'; c.beginPath(); c.arc(X + u * .5, Y + u * .07, u * .045, 0, 7); c.fill();
+    c.strokeStyle = '#6b4a2a'; c.lineWidth = Math.max(1, u * .025); c.beginPath(); c.moveTo(X + u * .5, Y + u * .03); c.lineTo(X + u * .5, Y + u * .14); c.stroke();
+    const wv = Math.sin(clock * 4) * u * .025;
+    c.fillStyle = '#f08a1c'; c.beginPath(); c.moveTo(X + u * .5, Y + u * .03); c.lineTo(X + u * .68 + wv, Y + u * .07); c.lineTo(X + u * .5, Y + u * .11); c.closePath(); c.fill();
+  }
+}
+
+function drawBuilding(b) {
+  const def = BUILDINGS[b.type], X = px(b.x), Y = py(b.y), u = ts;
+  ctx.fillStyle = 'rgba(0,0,0,.16)'; ctx.beginPath(); ctx.ellipse(X + u * .5, Y + u * .9, u * .42, u * .1, 0, 0, 7); ctx.fill();
+  if (!b.built) {
+    ctx.fillStyle = '#cdbb9d'; rr(ctx, X + u * .1, Y + u * .3, u * .8, u * .58, u * .12); ctx.fill();
+    emoji('🚧', X + u / 2, Y + u * .45, u * .7);
     const k = 1 - b.left / def.time;
-    ctx.fillStyle = 'rgba(0,0,0,.35)'; rr(ctx, X + ts * .12, Y + ts * .8, ts * .76, ts * .13, ts * .06); ctx.fill();
-    ctx.fillStyle = '#f4b73e'; rr(ctx, X + ts * .12, Y + ts * .8, Math.max(ts * .1, ts * .76 * k), ts * .13, ts * .06); ctx.fill();
+    ctx.fillStyle = 'rgba(0,0,0,.35)'; rr(ctx, X + u * .12, Y + u * .8, u * .76, u * .13, u * .06); ctx.fill();
+    ctx.fillStyle = '#f4b73e'; rr(ctx, X + u * .12, Y + u * .8, Math.max(u * .1, u * .76 * k), u * .13, u * .06); ctx.fill();
+    return;
+  }
+  drawArt(b.type, X, Y, b);
+  if (b.type === 'house') {
+    const idx = builtOf('house').indexOf(b), occ = state.people.slice(idx * 2, idx * 2 + 2);
+    occ.forEach((p, i) => drawPerson(X + u * (.3 + i * .4), Y + u * .94, u * .34, p.id));
+  } else if (def.work && b.worked) {
+    const w = state.people.find(p => p.id === b.workerId);
+    if (w) drawPerson(X + u * .86, Y + u * .94, u * .36, w.id);
+  }
+  if (def.work && lvlOf(b) > 1) {
+    ctx.fillStyle = '#f08a1c'; ctx.beginPath(); ctx.arc(X + u * .15, Y + u * .17, u * .16, 0, 7); ctx.fill();
+    ctx.fillStyle = '#fff'; ctx.font = `800 ${Math.round(u * .22)}px sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(lvlOf(b), X + u * .15, Y + u * .18);
   }
 }
 function drawKotwal() {
@@ -1068,6 +1239,7 @@ function onTap(clientX, clientY) {
   for (const n of s.nodes) { const d = Math.hypot(fx_ - (n.x + .5), fy_ - (n.y + .5)); if (d < nd) { nd = d; nn = n; } }
   if (nn) harvest(nn);
 }
+document.addEventListener('pointerdown', () => Sfx.init(), true);   // l'audio ne démarre qu'après un geste du joueur
 canvas.addEventListener('pointerdown', e => { e.preventDefault(); onTap(e.clientX, e.clientY); });
 canvas.addEventListener('pointermove', e => {
   if (!placing) return;
@@ -1122,7 +1294,7 @@ function init() {
   LANG = saved && saved.langChosen && saved.lang ? saved.lang : 'fr';   // français par défaut, sauf choix explicite du joueur
   state = saved || newState();
   rebuildGrids(); assignWorkers();
-  applyLang(); resize();
+  applyLang(); resize(); initCows();
   if (!state.seenIntro) openIntro();
   else {
     const o = saved ? offlineGains() : null;
@@ -1136,7 +1308,7 @@ init();
 // Accès pour les tests / le débogage : window.__gb
 window.__gb = {
   get state() { return state; }, get lang() { return LANG; },
-  update, harvest, upgrade, upCost, placeBuilding, startPlacing, finishBuilding, costOf, rates, spawnThief, catchThief,
+  update, harvest, upgrade, Sfx, initCows, upCost, placeBuilding, startPlacing, finishBuilding, costOf, rates, spawnThief, catchThief,
   claimDaily, dailyInfo, openDaily, openFestival, startFestival, openSettings, openBuildMenu, closeModal, save,
   offlineGains, openOffline, resetGame, t, Ads,
   get modalOpen() { return modalOpen; },

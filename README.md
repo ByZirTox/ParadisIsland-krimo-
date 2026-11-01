@@ -123,6 +123,11 @@ tout construit vers 6 min, puis les améliorations prennent le relais (≈2 h po
 Un joueur presque passif (0,25 toucher/s) a 1,5 à 2× de retard sur les jalons : la partie reste jouable sans taper.
 À régler avec de vrais joueurs : le bois/pierre devient le facteur limitant en fin de partie, les pièces s'accumulent.
 
+Style et confort (v2) : bâtiments, villageois, vaches et paon dessinés au canvas (maisons colorées, champs, échoppes à chaï,
+bazar, temple), guirlande de fanions, la fête devient un **Diwali** (diyas, feux d'artifice), le Kotwal monte un éléphant par défaut.
+Écran allégé (« +N » de production limités à 3 et plus discrets), conseils corrigés, bois moins bloquant
+(arbres 1-3 par toucher, coût +22 % par exemplaire), sons synthétisés et vibrations (réglage dans ⚙️), bouton Construire mis en avant au début.
+
 Tests : `window.__gb` expose l'état et des fonctions (`__gb.update(60)`, `__gb.spawnThief()`, `__gb.upgrade(b)`…).
 
 ## Pistes pour la suite
