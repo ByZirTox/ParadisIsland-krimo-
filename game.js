@@ -48,26 +48,26 @@ const NAMES = [
 
 // 5 bâtiments
 const BUILDINGS = {
-  maison: { n: 'Maison', e: '🏠', plate: '#ecbf90', cost: { bois: 8, pierre: 2 }, time: 12,
+  maison: { n: 'Maison', e: '🏠', plate: '#ecbf90', cost: { bois: 10, pierre: 3 }, time: 20,
     desc: 'Loge 2 habitants. Chaque habitant ramasse du bois ou de la pierre.' },
-  ferme:  { n: 'Ferme', e: '🌾', plate: '#dcc56e', cost: { bois: 10, pierre: 3 }, time: 15,
-    interval: 8, out: 'ble', job: 'fermier', desc: 'Produit du blé 🌾 (×2 avec un Fermier).' },
-  port:   { n: 'Port', e: '⚓', plate: '#93b8d8', cost: { bois: 12, pierre: 6 }, time: 15,
-    interval: 8, out: 'poisson', job: 'pecheur', coast: true,
+  ferme:  { n: 'Ferme', e: '🌾', plate: '#dcc56e', cost: { bois: 14, pierre: 5 }, time: 30,
+    interval: 10, out: 'ble', job: 'fermier', desc: 'Produit du blé 🌾 (×2 avec un Fermier).' },
+  port:   { n: 'Port', e: '⚓', plate: '#93b8d8', cost: { bois: 16, pierre: 8 }, time: 30,
+    interval: 10, out: 'poisson', job: 'pecheur', coast: true,
     desc: 'Produit du poisson 🐟 (×2 avec un Pêcheur). À poser au bord de l\'eau.' },
-  marche: { n: 'Marché', e: '🏪', plate: '#eba5a5', cost: { bois: 12, pierre: 8 }, time: 20,
-    interval: 10, job: 'marchand', desc: 'Vend le surplus de nourriture : +3 🪙 (×2 avec un Marchand).' },
-  mairie: { n: 'Mairie', e: '🏛️', plate: '#d2cbea', cost: { bois: 15, pierre: 10, pieces: 20 }, time: 25,
+  marche: { n: 'Marché', e: '🏪', plate: '#eba5a5', cost: { bois: 20, pierre: 12, pieces: 10 }, time: 45,
+    interval: 12, job: 'marchand', desc: 'Vend le surplus de nourriture : +3 🪙 (×2 avec un Marchand).' },
+  mairie: { n: 'Mairie', e: '🏛️', plate: '#d2cbea', cost: { bois: 30, pierre: 20, pieces: 60 }, time: 70,
     unique: true, desc: 'Ouvre l\'Assemblée : on y vote les règles de vie.' },
 };
 
 // 3 règles votables. `like` = probabilité qu'un habitant de ce type
 // apprécie que la règle soit en vigueur.
 const RULES = {
-  impots:   { n: 'Impôts', e: '💰', like: { pecheur: .4, fermier: .4, marchand: .2 },
+  impots:   { n: 'Impôts', e: '💰', like: { pecheur: .45, fermier: .45, marchand: .3 },
     desc: 'À chaque tournée, le shérif collecte 2 🪙 par habitant dans les maisons. Les gens râlent (bonheur −15).' },
   fetes:    { n: 'Fêtes', e: '🎉', like: { pecheur: .8, fermier: .8, marchand: .6 },
-    desc: 'Une fête toutes les 45 s (coûte 4 nourritures) : gros coup de boost au bonheur (+18).' },
+    desc: 'Une fête toutes les 45 s (coûte 1 nourriture par habitant, 4 minimum) : gros coup de boost au bonheur (+18).' },
   entraide: { n: 'Entraide', e: '🤝', like: { pecheur: .7, fermier: .8, marchand: .4 },
     desc: 'Production +25 %, deux fois moins d\'incidents, bonheur +8. Coûte 1 🪙 par habitant toutes les 20 s.' },
 };
@@ -212,14 +212,14 @@ function newState() {
   const s = MAP.start;
   const st = {
     v: 1, t: 0, seenIntro: false,
-    res: { bois: 22, pierre: 8, poisson: 3, ble: 3, pieces: 20 },
+    res: { bois: 18, pierre: 6, poisson: 4, ble: 2, pieces: 10 },
     buildings: [{ id: 1, type: 'maison', x: s.x, y: s.y, built: true, left: 0, acc: 0, workerId: null, lastTax: -99 }],
     people: [{ id: 2, name: 'Tom', g: 'm', type: 'pecheur' }],
     mood: 62, fed: true,
     rules: { impots: false, fetes: false, entraide: false }, entraideOk: true,
     voteCd: 0, lastVote: null,
     nodes, incidents: [], arrival: null,
-    timers: { arrival: 22, incident: 50, meal: 20, fete: 30, entraide: 20 },
+    timers: { arrival: 35, incident: 50, meal: 20, fete: 30, entraide: 20 },
     partyUntil: -1, gatherAcc: 0, skin: 'classic',
     stats: { resolved: 0 },
     nextId: 10,
@@ -251,6 +251,14 @@ const food = () => state.res.poisson + state.res.ble;
 const jobLabel = p => (p.g === 'f' ? JOBS[p.type].f : JOBS[p.type].m);
 const occupantsOf = houseIdx => state.people.slice(houseIdx * 2, houseIdx * 2 + 2);
 const moodFace = m => (m >= 80 ? '😄' : m >= 60 ? '🙂' : m >= 40 ? '😐' : m >= 20 ? '😟' : '😡');
+// le coût monte de 30 % à chaque exemplaire d'un même bâtiment (sauf la Mairie)
+function costOf(type) {
+  const def = BUILDINGS[type];
+  if (def.unique) return def.cost;
+  const n = Math.max(0, state.buildings.filter(b => b.type === type).length - (type === 'maison' ? 1 : 0));
+  const k = Math.pow(1.3, n);
+  return Object.fromEntries(Object.entries(def.cost).map(([r, v]) => [r, Math.ceil(v * k)]));
+}
 const canAfford = cost => Object.entries(cost).every(([k, v]) => state.res[k] >= v);
 const costHtml = cost => Object.entries(cost)
   .map(([k, v]) => `<span class="${state.res[k] >= v ? '' : 'lack'}">${v}${RES[k].e}</span>`).join('');
@@ -266,7 +274,7 @@ function assignJobs() {
 }
 
 function moodFactors() {
-  const s = state, f = [['Base', 50]];
+  const s = state, f = [['Base', 45]];
   f.push(s.fed ? ['Bien nourris 🍽️', 15] : ['Faim 😟', -25]);
   if (s.partyUntil > s.t) f.push(['Fête en cours 🎉', 18]);
   if (s.rules.entraide && s.entraideOk) f.push(['Entraide 🤝', 8]);
@@ -287,9 +295,9 @@ function give(k, n, tx, ty) {
 function harvest(n) {
   if (n.stock <= 0 || n.cool > state.t) return;
   const def = NODE[n.kind];
-  const amt = n.kind === 'rock' ? rint(1, 2) : rint(2, 3);
+  const amt = rint(1, 2);
   n.stock--; n.cool = state.t + .3;
-  if (n.stock <= 0) n.regrow = state.t + 25;
+  if (n.stock <= 0) n.regrow = state.t + 40;
   give(def.res, amt, n.x, n.y);
   lastHarvest = { res: def.res, amt, t: state.t, x: n.x, y: n.y };
 }
@@ -311,7 +319,7 @@ function canPlace(type, x, y) {
 function startPlacing(type) {
   const def = BUILDINGS[type];
   if (def.unique && state.buildings.some(b => b.type === type)) { toast(`Tu as déjà une ${def.n}.`); return; }
-  if (!canAfford(def.cost)) { toast('Pas assez de ressources.'); return; }
+  if (!canAfford(costOf(type))) { toast('Pas assez de ressources.'); return; }
   placing = type;
   renderHint();
 }
@@ -320,8 +328,9 @@ function placeBuilding(type, x, y) {
   const why = canPlace(type, x, y);
   if (why) { toast(why); return; }
   const def = BUILDINGS[type];
-  if (!canAfford(def.cost)) { toast('Pas assez de ressources.'); placing = null; return; }
-  for (const [k, v] of Object.entries(def.cost)) state.res[k] -= v;
+  const cost = costOf(type);
+  if (!canAfford(cost)) { toast('Pas assez de ressources.'); placing = null; return; }
+  for (const [k, v] of Object.entries(cost)) state.res[k] -= v;
   state.buildings.push({ id: state.nextId++, type, x, y, built: false, left: def.time, acc: 0, workerId: null, lastTax: -99 });
   rebuildGrids();
   placing = null;
@@ -603,11 +612,11 @@ function update(dt) {
   }
 
   // chaque habitant ramasse du bois ou de la pierre
-  s.gatherAcc += dt * s.people.length / 15;
+  s.gatherAcc += dt * s.people.length / 30;
   while (s.gatherAcc >= 1) {
     s.gatherAcc -= 1;
     const h = s.buildings.find(b => b.built && b.type === 'maison');
-    if (h) give(Math.random() < .65 ? 'bois' : 'pierre', 1, h.x, h.y);
+    if (h) give(Math.random() < .55 ? 'bois' : 'pierre', 1, h.x, h.y);
   }
 
   // repas
@@ -618,8 +627,9 @@ function update(dt) {
   if (s.rules.fetes) {
     s.timers.fete -= dt;
     if (s.timers.fete <= 0) {
-      if (food() >= 4) {
-        let n = 4;
+      const festCost = Math.max(4, s.people.length);
+      if (food() >= festCost) {
+        let n = festCost;
         for (const k of ['poisson', 'ble']) { const q = Math.min(s.res[k], n); s.res[k] -= q; n -= q; }
         s.partyUntil = s.t + 25; s.timers.fete = 45;
         const m = builtOf('mairie')[0] || s.buildings[0];
@@ -857,12 +867,12 @@ function openIntro() {
 function openBuildMenu() {
   const rows = Object.entries(BUILDINGS).map(([id, d]) => {
     const exists = d.unique && state.buildings.some(b => b.type === id);
-    const ok = !exists && canAfford(d.cost);
+    const ok = !exists && canAfford(costOf(id));
     return `<button type="button" class="row" data-b="${id}" ${ok ? '' : 'disabled'}>
       <span class="ico">${d.e}</span>
       <span class="grow"><span class="name">${d.n}${exists ? ' <span class="pill on">construite</span>' : ''}</span>
       <span class="desc">${d.desc}</span>
-      <span class="cost">${costHtml(d.cost)}<span>⏱️ ${d.time} s</span></span></span></button>`;
+      <span class="cost">${costHtml(costOf(id))}<span>⏱️ ${d.time} s</span></span></span></button>`;
   }).join('');
   openModal({
     title: '🔨 Construire', html: rows, buttons: [{ label: 'Fermer', cls: 'ghost' }],
@@ -1138,6 +1148,7 @@ function paintTerrain() {
 
 function emoji(ch, cx, cy, size, alpha = 1) {
   ctx.globalAlpha = alpha;
+  ctx.fillStyle = '#000';   // les emoji couleur héritent de l'alpha du fillStyle précédent
   ctx.font = `${size}px ${EMOJI_FONT}`;
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   ctx.fillText(ch, cx, cy + size * .06);
@@ -1413,7 +1424,7 @@ window.__ile = {
   get map() { return MAP; },
   get view() { return { ts, ox, oy, W, H }; },
   update, propose, spawnIncident, spawnArrival, acceptArrival, placeBuilding, startPlacing, finishBuilding,
-  harvest, resolveIncident, dispatchSheriff, openModal, closeModal, save, resetGame,
+  harvest, resolveIncident, dispatchSheriff, openModal, closeModal, save, resetGame, costOf,
   get modalOpen() { return modalOpen; },
 };
 
