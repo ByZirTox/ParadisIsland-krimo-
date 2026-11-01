@@ -303,7 +303,7 @@ button.row:active:not(:disabled) { transform: scale(.985); }
 .day.done { background: #effaf1; border-color: #7cc791; opacity: .75; }
 .day.now { border-color: #f08a1c; background: #fff3dc; box-shadow: 0 0 0 3px rgba(240, 138, 28, .25); }
 .day.big { grid-column: span 2; }
-.langs { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 8px 0; }
+.langs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 8px 0; }
 .langs .btn.sel { border-color: var(--leaf); background: #effaf1; }
 
 @media (max-width: 420px) {

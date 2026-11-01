@@ -79,6 +79,59 @@ const I18N = {
     h_thief: '🦹 चोर! जल्दी छुओ!',
     names: ['राम', 'सीता', 'मोहन', 'गीता', 'रवि', 'लक्ष्मी', 'अमित', 'पूजा', 'सुरेश', 'आरती', 'किशन', 'राधा', 'अजय', 'सुनीता', 'दीपक', 'मीना'],
   },
+  fr: {
+    title: 'Bazar du Village',
+    wood: 'Bois', stone: 'Pierre', grain: 'Grain', coins: 'Pièces', people: 'Habitants',
+    b_house: 'Maison', b_farm: 'Champ', b_chai: 'Échoppe à chaï', b_bazaar: 'Bazar', b_temple: 'Temple',
+    d_house: 'Loge 2 habitants.',
+    d_farm: 'Fait pousser du grain. Production doublée avec un ouvrier.',
+    d_chai: 'Vend du chaï contre des pièces. Production doublée avec un ouvrier.',
+    d_bazaar: 'Vend le grain contre des pièces (1 grain = 3 pièces). Production doublée avec un ouvrier.',
+    d_temple: 'Revenus de tout le village +20 %. (3 temples maximum)',
+    tab_build: 'Construire', tab_gift: 'Cadeau', tab_fest: 'Fête', tab_set: 'Réglages',
+    build_title: '🔨 Que construire ?', built_n: 'Construits : {0}', max_reached: 'Maximum atteint', secs: '{0} s', mins: '{0} min',
+    close: 'Fermer', cancel: 'Annuler',
+    need_more: 'Pas assez de ressources.', land_only: 'Construis sur la terre ferme.', occupied: 'Cette case est occupée.', tree_block: 'Un arbre ou un rocher gêne.',
+    place_hint: 'Touche une case <b>verte</b> pour poser : {0} {1}',
+    site_started: '🚧 Chantier lancé : {0} ({1} s)', site_done: '{0} {1} terminé !',
+    site_title: '🚧 {0} en construction', site_left: 'Encore {0} s', site_ad: '📺 Regarder une pub pour finir maintenant', site_ad_reason: 'Terminer le chantier tout de suite.',
+    house_people: 'Habitants :', house_empty: 'Vide pour l\'instant. Quelqu\'un va bientôt arriver !',
+    work_yes: '👷 {0} travaille ici : revenu ×2', work_no: 'Personne n\'y travaille. Un nouvel habitant doublera le revenu.',
+    temple_info: 'Les temples donnent +{0} % de revenus.',
+    arrive: '🧑 {0} arrive au village !',
+    lvl: 'Niveau {0}', up_btn: '⬆️ Améliorer → niveau {0}', up_done: '⬆️ {0} passe au niveau {1} ! Revenu en hausse.', lvl_max: '⭐ Niveau maximum', lvl_info: 'Chaque niveau ajoute +50 % de revenu.',
+    thief_toast: '🦹 Un voleur ! Touche-le vite !', escaped0: '🦹 Le voleur s\'est enfui…', caught: '👮 Voleur attrapé ! +{0}🪙', caught_combo: '👮 Bravo ! Combo ×{1} · +{0}🪙', escaped: '🦹 Le voleur s\'est enfui… −{0}🪙',
+    fest_title: '🎆 Fête', fest_desc: 'Les revenus de tout le village sont doublés pendant 30 secondes !',
+    fest_ready: 'Prête !', fest_live: 'En cours', fest_start_free: '🎆 Lancer la fête', fest_start: '🎆 C\'est la fête ! Revenus ×2 pendant {0} s',
+    fest_ad: '📺 Regarder une pub pour lancer maintenant', fest_wait: 'Prochaine fête dans {0}.', fest_ad_reason: 'Lancer la fête tout de suite.',
+    fest_running: 'La fête bat son plein ! Encore {0} s.',
+    daily_title: '🎁 Cadeau du jour', daily_day: 'Jour {0}', daily_claim: 'Récupérer', daily_double: '📺 Regarder une pub pour ×2',
+    daily_done: 'Cadeau du jour récupéré. Reviens demain !', daily_got: '🎁 Tu as reçu : {0}', daily_reason: 'Doubler le cadeau du jour.',
+    daily_streak: '{0} jours de suite 🔥', daily_hint: 'Reviens chaque jour : les cadeaux grossissent. Gros lot le jour 7 !',
+    offline_title: '🌙 Le village a travaillé sans toi', offline_body: 'En {0}, le village a gagné :', offline_take: 'Récupérer', offline_double: '📺 Regarder une pub pour ×2',
+    offline_reason: 'Doubler les gains.',
+    harvest_double: '📺 Doubler : +{0}{1}', harvest_double_reason: 'Doubler ce que tu viens de récolter.',
+    ad_title: '📺 Pub (simulation)', ad_wait: 'Récompense dans {0} s…', ad_ready: 'Merci ! Ta récompense est prête.', ad_take: 'Prendre la récompense', ad_skip: 'Passer, sans récompense',
+    ad_note: 'Facultatif : tout le jeu reste jouable sans pub.',
+    set_title: '⚙️ Réglages', set_lang: 'Langue', set_skin: '🐘 Monture du Kotwal', skin_on: 'Équipée', skin_pick: 'Toucher pour choisir',
+    skin_note: 'D\'autres montures et décors arrivent bientôt. Ils n\'ont aucun effet sur les revenus.',
+    reset: 'Recommencer une partie', reset_q: 'Tout recommencer ?', reset_body: 'Ton village sera effacé.', reset_yes: 'Oui, nouvelle partie',
+    skin_horse: 'Cheval', skin_elephant: 'Éléphant', skin_camel: 'Chameau',
+    intro_title: '🛖 Bienvenue au Bazar du Village !',
+    intro_1: '🌳 Touche les arbres et les 🪨 rochers pour récolter bois et pierre.',
+    intro_2: '🔨 Construis champs, échoppes à chaï, bazars et temples. Les pièces rentrent toutes seules.',
+    intro_3: '🦹 Un voleur ? Touche-le vite : le Kotwal l\'attrapera !',
+    intro_4: '🎁 Reviens chaque jour pour un cadeau. Le village gagne aussi quand tu es parti.',
+    intro_go: 'C\'est parti !',
+    h_start: 'Touche les arbres 🌳 et les rochers 🪨, puis construis un champ 🌾.',
+    h_chai: 'Construis une échoppe à chaï ☕ pour gagner des pièces.',
+    h_house: 'Construis une maison 🏠 pour accueillir de nouveaux habitants.',
+    h_bazaar: 'Construis un bazar 🏪 : vends ton grain contre des pièces.',
+    h_temple: 'Construis un temple 🛕 : tout le village gagne plus.',
+    h_idle: 'Touche vite les voleurs 🦹 ! Une fête 🎆 double tes revenus.',
+    h_thief: '🦹 Un voleur ! Touche-le vite !',
+    names: ['Ram', 'Sita', 'Mohan', 'Geeta', 'Ravi', 'Lakshmi', 'Amit', 'Pooja', 'Suresh', 'Aarti', 'Kishan', 'Radha', 'Ajay', 'Sunita', 'Deepak', 'Meena'],
+  },
   en: {
     title: 'Village Bazaar',
     wood: 'Wood', stone: 'Stone', grain: 'Grain', coins: 'Coins', people: 'Villagers',
@@ -773,7 +826,7 @@ function openBuildingModal(b) {
   openModal({ title: `${def.e} ${bName(b.type)}`, html: body, buttons });
 }
 function openSettings() {
-  const langs = `<div class="langs">${[['hi', 'हिन्दी'], ['en', 'English']].map(([c, n]) => `<button type="button" class="btn ${LANG === c ? 'sel' : ''}" data-lang="${c}">${n}</button>`).join('')}</div>`;
+  const langs = `<div class="langs">${[['fr', 'Français'], ['hi', 'हिन्दी'], ['en', 'English']].map(([c, n]) => `<button type="button" class="btn ${LANG === c ? 'sel' : ''}" data-lang="${c}">${n}</button>`).join('')}</div>`;
   const skins = SKINS.map(k => `<button type="button" class="row ${state.skin === k.id ? 'sel' : ''}" data-skin="${k.id}">
       <span class="ico">${k.e}</span><span class="grow"><span class="name">${t(k.n)}</span>
       <span class="desc">${state.skin === k.id ? t('skin_on') : t('skin_pick')}</span></span></button>`).join('');
@@ -1066,7 +1119,7 @@ function frame(now) {
 function init() {
   MAP = genMap();
   const saved = load();
-  LANG = saved && saved.lang ? saved.lang : 'hi';
+  LANG = saved && saved.lang ? saved.lang : ((navigator.language || '').toLowerCase().startsWith('fr') ? 'fr' : 'hi');
   state = saved || newState();
   rebuildGrids(); assignWorkers();
   applyLang(); resize();
