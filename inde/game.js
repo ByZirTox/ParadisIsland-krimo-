@@ -1480,6 +1480,21 @@ function frame(now) {
   }
   requestAnimationFrame(frame);
 }
+// ---------- Statistiques anonymes (rétention) ----------
+// Vide = désactivé. Tedy y met l'adresse de son serveur, ex. 'https://stats.exemple.com/ping'.
+const STATS_URL = '';
+function pingStats() {
+  if (!STATS_URL) return;
+  try {
+    let id = localStorage.getItem('gb-uid');
+    if (!id) { id = (crypto.randomUUID ? crypto.randomUUID() : String(Math.random()).slice(2) + Date.now()); localStorage.setItem('gb-uid', id); }
+    const d = new Date(), day = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+    if (localStorage.getItem('gb-ping') === day) return;   // un seul envoi par jour
+    fetch(STATS_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ id, day, lang: LANG, game: 'gaon-bazaar' }), keepalive: true })
+      .then(r => { if (r.ok) localStorage.setItem('gb-ping', day); }).catch(() => {});
+  } catch (e) { /* hors-ligne ou stockage indisponible */ }
+}
+
 function init() {
   MAP = genMap();
   const saved = load();
@@ -1493,6 +1508,7 @@ function init() {
     if (o) openOffline(o);
     else afterIntro();
   }
+  pingStats();
   requestAnimationFrame(frame);
 }
 init();
